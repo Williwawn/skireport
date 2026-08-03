@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}skiReport{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏔️</text></svg>">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="{{ url_for('index') }}">
+      <span aria-hidden="true">🏔️</span> ski<strong>Report</strong>
+    </a>
+    {% block header_extra %}{% endblock %}
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Weather data by
+      <a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a>,
+      licensed CC BY 4.0. Forecast models, not on-mountain measurements.
+    </p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+  <h1>Snow conditions for {{ total }} mountains</h1>
+  <p class="lede">
+    Current temperature, wind and new snowfall at both base and summit, plus a
+    seven-day outlook. Pick a mountain to see its report.
+  </p>
+  {% include "_picker.html" %}
+</section>
+
+<section class="region-list">
+  {% for region, items in regions.items() %}
+    <div class="region">
+      <h2>{{ region }}</h2>
+      <ul>
+        {% for m in items %}
+          <li>
+            <a href="{{ url_for('mountain_report', mountain_id=m.id) }}">
+              {{ m.name }}
+              <span class="muted">{{ m.state }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endfor %}
+</section>
+{% endblock %}

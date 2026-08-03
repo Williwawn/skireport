@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}{{ mountain.name }} snow report &middot; skiReport{% endblock %}
+
+{% macro val(value, unit="", digits=0) -%}
+  {%- if value is none -%}
+    <span class="muted">&mdash;</span>
+  {%- else -%}
+    {{ "%.{}f".format(digits) % value }}{{ unit }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro snowbox(caption, inches) %}
+  <div class="snow-stat {% if inches and inches > 0 %}has-snow{% endif %}">
+    <span class="snow-value">{{ val(inches, '"', 1) }}</span>
+    <span class="snow-caption">{{ caption }}</span>
+  </div>
+{% endmacro %}
+
+{% macro conditions_card(item) %}
+  <article class="card">
+    <header>
+      <h3>{{ item.label }}</h3>
+      <span class="muted">{{ "{:,}".format((item.conditions.elevation_m / 0.3048) | round | int) }} ft</span>
+    </header>
+    <p class="sky">
+      <span class="sky-icon" aria-hidden="true">{{ item.conditions.weather_icon }}</span>
+      {{ item.conditions.weather_label }}
+    </p>
+    <p class="temp">{{ val(item.conditions.temperature_f, "°") }}</p>
+    <dl>
+      <div><dt>Feels like</dt><dd>{{ val(item.conditions.feels_like_f, "°") }}</dd></div>
+      <div><dt>Wind</dt><dd>{{ val(item.conditions.wind_mph, " mph") }}</dd></div>
+      <div><dt>Gusts</dt><dd>{{ val(item.conditions.gust_mph, " mph") }}</dd></div>
+      <div><dt>Snow depth</dt><dd>{{ val(item.snow_depth_in, '"', 1) }}</dd></div>
+    </dl>
+  </article>
+{% endmacro %}
+
+{% block content %}
+<section class="report-header">
+  <p class="breadcrumb"><a href="{{ url_for('index') }}">&larr; All mountains</a></p>
+  <h1>{{ mountain.name }}</h1>
+  <p class="meta">
+    {{ mountain.state }}, {{ mountain.country }}
+    &middot; {{ "{:,}".format(mountain.base_elevation_ft) }}&ndash;{{ "{:,}".format(mountain.summit_elevation_ft) }} ft
+    &middot; {{ "{:,}".format(mountain.vertical_ft) }} ft vertical
+    &middot; <a href="{{ mountain.website }}" rel="noopener">Resort site</a>
+  </p>
+</section>
+
+{% if report is none %}
+  <section class="notice error">
+    <h2>Weather unavailable</h2>
+    <p>
+      Couldn't reach Open-Meteo for {{ mountain.name }} just now, and there's no
+      recent copy cached. Check your connection and reload.
+    </p>
+  </section>
+{% else %}
+
+  {% if report.stale %}
+    <p class="notice warn">
+      Showing the last successful fetch &mdash; the live update failed.
+    </p>
+  {% endif %}
+
+  <section class="snow-row" aria-label="Recent snowfall at the summit">
+    {{ snowbox("New snow 24h", report.summit.new_snow_24h_in) }}
+    {{ snowbox("48h", report.summit.new_snow_48h_in) }}
+    {{ snowbox("72h", report.summit.new_snow_72h_in) }}
+    <div class="snow-stat depth">
+      <span class="snow-value">{{ val(report.summit.snow_depth_in, '"', 1) }}</span>
+      <span class="snow-caption">Summit depth</span>
+    </div>
+  </section>
+
+  <section class="cards">
+    {{ conditions_card(report.base) }}
+    {{ conditions_card(report.summit) }}
+  </section>
+
+  <section class="forecast">
+    <h2>Seven-day outlook</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            <th scope="col">Conditions</th>
+            <th scope="col">High</th>
+            <th scope="col">Low</th>
+            <th scope="col">Snow (summit)</th>
+            <th scope="col">Max wind</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in report.forecast %}
+            <tr>
+              <th scope="row">
+                {{ day.day_label }}
+                <span class="muted">{{ day.date_label }}</span>
+              </th>
+              <td>
+                <span aria-hidden="true">{{ day.weather_icon }}</span>
+                {{ day.weather_label }}
+              </td>
+              <td>{{ val(day.high_f, "°") }}</td>
+              <td>{{ val(day.low_f, "°") }}</td>
+              <td class="{% if day.summit_snowfall_in and day.summit_snowfall_in > 0 %}has-snow{% endif %}">
+                {{ val(day.summit_snowfall_in, '"', 1) }}
+              </td>
+              <td>{{ val(day.wind_max_mph, " mph") }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="updated">
+    Updated {{ report.observed_at.strftime("%H:%M") }} local
+    {%- if report.timezone_name %} ({{ report.timezone_name }}){% endif %}
+  </p>
+{% endif %}
+
+<section class="switcher">
+  {% include "_picker.html" %}
+</section>
+{% endblock %}
