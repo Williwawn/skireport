@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytest
 import requests
 
-from conftest import FIXTURE_NOW
+from conftest import FIXTURE_NOW, log
 from skireport import mountains, weather
 
 
@@ -14,7 +14,9 @@ from skireport import mountains, weather
     [(24, 24.0), (48, 36.0), (72, 42.0)],
 )
 def test_snowfall_windows(payload, hours, expected):
-    assert weather.snowfall_window(payload, hours, FIXTURE_NOW) == expected
+    total = weather.snowfall_window(payload, hours, FIXTURE_NOW)
+    log.info("trailing %sh snowfall = %.1f\" (expected %.1f)", hours, total, expected)
+    assert total == expected
 
 
 def test_snowfall_window_excludes_the_future(payload):
@@ -35,7 +37,9 @@ def test_snowfall_window_tolerates_nulls(payload):
 def test_snow_depth_converts_feet_to_inches(payload):
     # Fixture reports 5.0 ft, which is what Open-Meteo returns for inch units.
     assert payload["hourly_units"]["snow_depth"] == "ft"
-    assert weather.current_snow_depth(payload, FIXTURE_NOW) == 60.0
+    depth = weather.current_snow_depth(payload, FIXTURE_NOW)
+    log.info("snow depth: 5.0 ft reported as %s -> %.1f in", "ft", depth)
+    assert depth == 60.0
 
 
 def test_snow_depth_handles_metres(payload):
@@ -59,6 +63,13 @@ def test_local_now_uses_the_resort_offset(payload):
 def test_report_shape(offline):
     report = weather.get_report(mountains.get("jackson-hole"))
 
+    log.info(
+        "jackson-hole: base %r, summit 24h %.1f\", headline %.1f\", stale=%s",
+        report.base.conditions.weather_label,
+        report.summit.new_snow_24h_in,
+        report.headline_new_snow_in,
+        report.stale,
+    )
     assert report.base.label == "Base"
     assert report.summit.label == "Summit"
     assert report.summit.new_snow_24h_in == 24.0
@@ -72,6 +83,13 @@ def test_forecast_drops_past_days_and_caps_at_seven(offline):
     """past_days=3 pads the daily arrays; only today onward should survive."""
     report = weather.get_report(mountains.get("jackson-hole"))
 
+    log.info(
+        "forecast: %d days, %s -> %s, day0 summit snowfall %.1f\"",
+        len(report.forecast),
+        report.forecast[0].day,
+        report.forecast[-1].day,
+        report.forecast[0].summit_snowfall_in,
+    )
     assert len(report.forecast) == 7
     assert report.forecast[0].day == FIXTURE_NOW.date()
     assert [d.day for d in report.forecast] == sorted(d.day for d in report.forecast)
@@ -94,6 +112,7 @@ def test_second_call_is_served_from_cache(offline):
     weather.get_report(jackson)
     weather.get_report(jackson)
 
+    log.info("2 get_report calls -> %d upstream fetches (cache hit on the 2nd)", len(offline))
     assert len(offline) == 2  # not 4
 
 
@@ -118,6 +137,11 @@ def test_failure_falls_back_to_stale_cache(offline, monkeypatch):
     monkeypatch.setattr(weather, "_fetch_payload", boom)
 
     report = weather.get_report(jackson)
+    log.info(
+        "upstream down -> served stale=%s with summit 24h %.1f\"",
+        report.stale,
+        report.summit.new_snow_24h_in,
+    )
     assert report.stale is True
     assert report.summit.new_snow_24h_in == 24.0
 
