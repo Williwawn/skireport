@@ -3,12 +3,20 @@ import re
 
 import pytest
 
+from conftest import log
 from skireport import mountains
 from skireport.mountains import RegistryError, _load
 
 
 def test_registry_loads():
     everything = mountains.all_mountains()
+    by_region = mountains.by_region()
+    log.info(
+        "registry: %d mountains across %d regions (%s)",
+        len(everything),
+        len(by_region),
+        ", ".join(f"{r} {len(v)}" for r, v in by_region.items()),
+    )
     assert len(everything) >= 40
 
 

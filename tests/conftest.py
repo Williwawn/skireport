@@ -1,4 +1,5 @@
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +8,10 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+# Shared by every test module; `log_cli` in pytest.ini is what makes these
+# visible for passing tests, not just failing ones.
+log = logging.getLogger("skireport.tests")
 
 FIXTURE = Path(__file__).parent / "fixtures" / "open_meteo_sample.json"
 
